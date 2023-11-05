@@ -4,6 +4,16 @@ const str = (s) => (parserState) => {
   if (targetString.slice(index).startsWith(s)) {
     return { ...parserState, result: s, index: index + s.length }; // if they're equal , result is s
   }
+
+  return {
+    ...parserState,
+    error: `Tried to match "${s}", but got "${targetString.slice(
+      index,
+      index + 10
+    )}`,
+    isError: true,
+  };
+
   throw new Error(
     `Tried to match "${s}", but found "${targetString.slice(index, index + 10)}`
   );
@@ -29,10 +39,28 @@ const run = (parser, targetString) => {
     targetString,
     index: 0,
     result: null,
+    isError: false,
+    error: null,
   };
   return parser(initialState);
 };
 
-const parser = sequenceOf([str("hello!"), str("goodbye!")]); //  str get first argument
+const parser = str("hello!");
 
-console.log(run(parser, "hello!goodbye!"));
+console.log(run(parser, "hello"));
+
+/**
+ 
+{
+  targetString: 'hello',
+  index: 0,
+  result: null,
+  isError: true,
+  error: 'Tried to match "hello!", but got "hello'
+}
+  
+ */
+
+//const parser = sequenceOf([str("hello!"), str("goodbye!")]); //  str get first argument
+
+//console.log(run(parser, "hello!goodbye!"));
