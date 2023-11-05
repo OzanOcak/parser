@@ -1,6 +1,11 @@
 const str = (s) => (parserState) => {
   // initially index is 0
-  const { targetString, index } = parserState;
+  const { targetString, index, isError } = parserState;
+
+  if (isError) {
+    return parserState;
+  }
+
   if (targetString.slice(index).startsWith(s)) {
     return { ...parserState, result: s, index: index + s.length }; // if they're equal , result is s
   }
@@ -13,13 +18,12 @@ const str = (s) => (parserState) => {
     )}`,
     isError: true,
   };
-
-  throw new Error(
-    `Tried to match "${s}", but found "${targetString.slice(index, index + 10)}`
-  );
 };
 
 const sequenceOf = (parsers) => (parserState) => {
+  if (parserState.isError) {
+    return parserState;
+  }
   const results = [];
   let nextState = parserState;
 
