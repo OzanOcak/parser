@@ -9,6 +9,21 @@ const str = (s) => (parserState) => {
   );
 };
 
+const sequenceOf = (parsers) => (parserState) => {
+  const results = [];
+  let nextState = parserState;
+
+  for (let p of parsers) {
+    nextState = p(nextState);
+    results.push(nextState.result);
+  }
+
+  return {
+    ...nextState,
+    result: results,
+  };
+};
+
 const run = (parser, targetString) => {
   const initialState = {
     targetString,
@@ -18,6 +33,6 @@ const run = (parser, targetString) => {
   return parser(initialState);
 };
 
-const parser = str("hello!"); //  str get first argument
+const parser = sequenceOf([str("hello!"), str("goodbye!")]); //  str get first argument
 
-console.log(run(parser, "hello!"));
+console.log(run(parser, "hello!goodbye!"));
