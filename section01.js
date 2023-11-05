@@ -7,6 +7,11 @@ const str = (s) => (targetString) => {
   );
 };
 
-const res = str("hello world!")("hello world!");
+const run = (parser, targetString) => {
+  //str assigns parser &  parse get the second argument
+  return parser(targetString);
+};
 
-console.log(res);
+const parser = str("hello!"); //  str get first argument
+
+console.log(run(parser, "hello!"));
