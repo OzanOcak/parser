@@ -1,3 +1,20 @@
+const updateParserState = (state, index, result) => ({
+  ...state,
+  index,
+  result,
+});
+
+const updateParserResult = (state, result) => ({
+  ...state,
+  result,
+});
+
+const updateParserError = (state, errorMsg) => ({
+  ...state,
+  isError: true,
+  error: errorMsg,
+});
+
 const str = (s) => (parserState) => {
   // initially index is 0
   const { targetString, index, isError } = parserState;
@@ -7,17 +24,13 @@ const str = (s) => (parserState) => {
   }
 
   if (targetString.slice(index).startsWith(s)) {
-    return { ...parserState, result: s, index: index + s.length }; // if they're equal , result is s
+    return updateParserState(parserState, index + s.length, s);
   }
 
-  return {
-    ...parserState,
-    error: `Tried to match "${s}", but got "${targetString.slice(
-      index,
-      index + 10
-    )}`,
-    isError: true,
-  };
+  return updateParserError(
+    parserState,
+    `Tried to match "${s}", but got "${targetString.slice(index, index + 10)}`
+  );
 };
 
 const sequenceOf = (parsers) => (parserState) => {
@@ -32,10 +45,7 @@ const sequenceOf = (parsers) => (parserState) => {
     results.push(nextState.result);
   }
 
-  return {
-    ...nextState,
-    result: results,
-  };
+  return updateParserResult(nextState, results);
 };
 
 const run = (parser, targetString) => {
@@ -51,7 +61,7 @@ const run = (parser, targetString) => {
 
 const parser = str("hello!");
 
-console.log(run(parser, "hello"));
+console.log(run(parser, "hello!"));
 
 /**
  
