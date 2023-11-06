@@ -15,53 +15,61 @@ const updateParserError = (state, errorMsg) => ({
   error: errorMsg,
 });
 
-const str = (s) => (parserState) => {
-  // initially index is 0
-  const { targetString, index, isError } = parserState;
-
-  if (isError) {
-    return parserState;
+class Parser {
+  constructor(parserStateTransformerFn) {
+    this.parserStateTransformerFn = parserStateTransformerFn;
   }
 
-  if (targetString.slice(index).startsWith(s)) {
-    return updateParserState(parserState, index + s.length, s);
-  }
-
-  return updateParserError(
-    parserState,
-    `Tried to match "${s}", but got "${targetString.slice(index, index + 10)}`
-  );
-};
-
-const sequenceOf = (parsers) => (parserState) => {
-  if (parserState.isError) {
-    return parserState;
-  }
-  const results = [];
-  let nextState = parserState;
-
-  for (let p of parsers) {
-    nextState = p(nextState);
-    results.push(nextState.result);
-  }
-
-  return updateParserResult(nextState, results);
-};
-
-const run = (parser, targetString) => {
-  const initialState = {
-    targetString,
-    index: 0,
-    result: null,
-    isError: false,
-    error: null,
+  run = (targetString) => {
+    const initialState = {
+      targetString,
+      index: 0,
+      result: null,
+      isError: false,
+      error: null,
+    };
+    return this.parserStateTransformerFn(initialState);
   };
-  return parser(initialState);
-};
+}
+
+const str = (s) =>
+  new Parser((parserState) => {
+    // initially index is 0
+    const { targetString, index, isError } = parserState;
+
+    if (isError) {
+      return parserState;
+    }
+
+    if (targetString.slice(index).startsWith(s)) {
+      return updateParserState(parserState, index + s.length, s);
+    }
+
+    return updateParserError(
+      parserState,
+      `Tried to match "${s}", but got "${targetString.slice(index, index + 10)}`
+    );
+  });
+
+const sequenceOf = (parsers) =>
+  new Parser((parserState) => {
+    if (parserState.isError) {
+      return parserState;
+    }
+    const results = [];
+    let nextState = parserState;
+
+    for (let p of parsers) {
+      nextState = p.parserStateTransformerFn(nextState);
+      results.push(nextState.result);
+    }
+
+    return updateParserResult(nextState, results);
+  });
 
 const parser = str("hello!");
 
-console.log(run(parser, "hello!"));
+console.log(parser.run("hello!"));
 
 /**
  
