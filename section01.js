@@ -30,6 +30,27 @@ class Parser {
     };
     return this.parserStateTransformerFn(initialState);
   };
+
+  map(fn) {
+    // parser in --->  parser out   // parse is a string, this is not same func as map function
+    return new Parser((parserState) => {
+      const nextState = this.parserStateTransformerFn(parserState);
+
+      if (nextState.isError) return nextState;
+
+      return updateParserResult(nextState, fn(nextState.result));
+    });
+  }
+
+  errorMap(fn) {
+    return new Parser((parserState) => {
+      const nextState = this.parserStateTransformerFn(parserState);
+
+      if (!nextState.isError) return nextState;
+
+      return updateParserError(nextState, fn(nextState.error, nextState.index));
+    });
+  }
 }
 
 const str = (s) =>
@@ -67,7 +88,11 @@ const sequenceOf = (parsers) =>
     return updateParserResult(nextState, results);
   });
 
-const parser = str("hello!");
+const parser = str("hello!")
+  .map((result) => ({
+    value: result.toUpperCase(),
+  }))
+  .errorMap((msg, index) => `Expected a greeting @ index ${index}`);
 
 console.log(parser.run("hello!"));
 
