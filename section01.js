@@ -151,9 +151,86 @@ const sequenceOf = (parsers) =>
     return updateParserResult(nextState, results);
   });
 
-const parser = sequenceOf([digits, letters, digits]);
+const choice = (parsers) =>
+  new Parser((parserState) => {
+    if (parserState.isError) {
+      return parserState;
+    }
 
-console.log(parser.run("123abc456"));
+    for (let p of parsers) {
+      const nextState = p.parserStateTransformerFn(parserState);
+      if (!nextState.isError) {
+        return nextState;
+      }
+    }
+
+    return updateParserError(
+      parserState,
+      `choice: Unable to match with any parser at index ${parserState.index}`
+    );
+  });
+// choice is eather one of them
+
+const many = (parser) =>
+  new Parser((parserState) => {
+    if (parserState.isError) {
+      return parserState;
+    }
+
+    let nextState = parserState;
+    const results = [];
+    let done = false;
+
+    while (!done) {
+      let testState = parser.parserStateTransformerFn(nextState);
+
+      if (!testState.isError) {
+        results.push(testState.result);
+        nextState = testState;
+      } else {
+        done = true;
+      }
+    }
+
+    return updateParserResult(nextState, results);
+  });
+// try to match as many time as they can
+
+const many1 = (parser) =>
+  new Parser((parserState) => {
+    if (parserState.isError) {
+      return parserState;
+    }
+
+    let nextState = parserState;
+    const results = [];
+    let done = false;
+
+    while (!done) {
+      const nextState = parser.parserStateTransformerFn(nextState);
+      if (!nextState.isError) {
+        results.push(nextState.result);
+      } else {
+        done = true;
+      }
+    }
+
+    if (results.length === 0) {
+      return updateParserError(
+        parserState,
+        `many1: Unable to match any input using parser @ index ${parserState.index}`
+      );
+    }
+
+    return updateParserResult(nextState, results);
+  });
+// match many or at least one
+
+//const parser = sequenceOf([digits, letters, digits]);
+
+const parser = many(choice([digits, letters]));
+
+console.log(parser.run("abc56"));
 
 //const parser = letters;
 
