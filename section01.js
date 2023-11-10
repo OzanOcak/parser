@@ -31,7 +31,7 @@ class Parser {
     return this.parserStateTransformerFn(initialState);
   };
 
-  map(fn) {
+  map_p(fn) {
     // parser in --->  parser out   // parse is a string, this is not same func as map function
     return new Parser((parserState) => {
       const nextState = this.parserStateTransformerFn(parserState);
@@ -226,35 +226,40 @@ const many1 = (parser) =>
   });
 // match many or at least one
 
+const between = (leftParser, rightParser) => (contentParser) =>
+  sequenceOf([leftParser, contentParser, rightParser]).map_p((res) => res[1]);
+
 //const parser = sequenceOf([digits, letters, digits]);
 
-const parser = many(choice([digits, letters]));
+//const parser = many(choice([digits, letters]));
+const betweenBrackets = between(str("("), str(")"));
+const parser = betweenBrackets(letters);
 
-console.log(parser.run("abc56"));
+console.log(parser.run("(hello)"));
 
 //const parser = letters;
 
 //console.log(parser.run("abc12345"));
 
 /*const parser = str("hello!")
-  .map((result) => ({
-    value: result.toUpperCase(),
-  }))
-  .errorMap((msg, index) => `Expected a greeting @ index ${index}`);
-
-console.log(parser.run("hello!"));
-
-/**
- 
-{
-  targetString: 'hello',
-  index: 0,
-  result: null,
-  isError: true,
-  error: 'Tried to match "hello!", but got "hello'
-}
-  
- */
+      .map((result) => ({
+        value: result.toUpperCase(),
+      }))
+      .errorMap((msg, index) => `Expected a greeting @ index ${index}`);
+    
+    console.log(parser.run("hello!"));
+    
+    /**
+     
+    {
+      targetString: 'hello',
+      index: 0,
+      result: null,
+      isError: true,
+      error: 'Tried to match "hello!", but got "hello'
+    }
+      
+     */
 
 //const parser = sequenceOf([str("hello!"), str("goodbye!")]); //  str get first argument
 
