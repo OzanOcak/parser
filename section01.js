@@ -306,11 +306,20 @@ const parser = sequenceOf([letters, str(":")])
 console.log(parser.run("diceroll:2d8"));
 console.log(parser.run("number:42"));
 
-const betweenSquaredBrackets = between(str("["), str("]"));
-const commaSeperated = sepBy(str(","));
+const lazy = (parserThunk) =>
+  new Parser((parserState) => {
+    const parser = parserThunk();
+    return parser.parserStateTransformerFn(parserState);
+  });
 
-const parser1 = betweenSquaredBrackets(commaSeperated(digits));
-console.log(parser1.run("[1,2,3,4,5]"));
+const betweenSquaredBrackets = between(str("["), str("]"));
+const commaSeparated = sepBy(str(","));
+
+//const parser1 = betweenSquaredBrackets(commaSeperated(digits));
+const value = lazy(() => choice([digits, arrayParser]));
+const arrayParser = betweenSquaredBrackets(commaSeparated(value));
+console.log(arrayParser.run("[1,[2,[3],4],5]"));
+//console.log(parser1.run("[1,2,3,4,5]"));
 
 //console.log(parser.run("(hello)"));
 
