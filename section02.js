@@ -20,7 +20,7 @@ class Parser {
     this.parserStateTransformerFn = parserStateTransformerFn;
   }
 
-  run = (targetString) => {
+  run(targetString) {
     const initialState = {
       targetString,
       index: 0,
@@ -28,11 +28,11 @@ class Parser {
       isError: false,
       error: null,
     };
-    return this.parserStateTransformerFn(initialState);
-  };
 
-  map_p(fn) {
-    // parser in --->  parser out   // parse is a string, this is not same func as map function
+    return this.parserStateTransformerFn(initialState);
+  }
+
+  map(fn) {
     return new Parser((parserState) => {
       const nextState = this.parserStateTransformerFn(parserState);
 
@@ -67,18 +67,32 @@ class Parser {
 
 const str = (s) =>
   new Parser((parserState) => {
-    // initially index is 0
     const { targetString, index, isError } = parserState;
 
     if (isError) {
       return parserState;
     }
 
-    if (targetString.slice(index).startsWith(s)) {
+    const slicedTarget = targetString.slice(index);
+
+    if (slicedTarget.length === 0) {
+      return updateParserError(
+        parserState,
+        `str: Tried to match "${s}", but got Unexpected end of input.`
+      );
+    }
+
+    if (slicedTarget.startsWith(s)) {
       return updateParserState(parserState, index + s.length, s);
     }
 
-    return updateParserError(parserState, `letters: Got unexpected error`);
+    return updateParserError(
+      parserState,
+      `str: Tried to match "${s}", but got "${targetString.slice(
+        index,
+        index + 10
+      )}"`
+    );
   });
 
 const lettersRegex = /^[A-Za-z]+/;
@@ -152,6 +166,7 @@ const sequenceOf = (parsers) =>
     if (parserState.isError) {
       return parserState;
     }
+
     const results = [];
     let nextState = parserState;
 
@@ -181,7 +196,6 @@ const choice = (parsers) =>
       `choice: Unable to match with any parser at index ${parserState.index}`
     );
   });
-// choice is eather one of them
 
 const many = (parser) =>
   new Parser((parserState) => {
@@ -206,7 +220,6 @@ const many = (parser) =>
 
     return updateParserResult(nextState, results);
   });
-// try to match as many time as they can
 
 const many1 = (parser) =>
   new Parser((parserState) => {
@@ -236,7 +249,6 @@ const many1 = (parser) =>
 
     return updateParserResult(nextState, results);
   });
-// match many or at least one
 
 const sepBy = (separatorParser) => (valueParser) =>
   new Parser((parserState) => {
@@ -262,49 +274,41 @@ const sepBy = (separatorParser) => (valueParser) =>
     return updateParserResult(nextState, results);
   });
 
-const between = (leftParser, rightParser) => (contentParser) =>
-  sequenceOf([leftParser, contentParser, rightParser]).map_p((res) => res[1]);
+const sepBy1 = (separatorParser) => (valueParser) =>
+  new Parser((parserState) => {
+    const results = [];
+    let nextState = parserState;
 
-//const parser = sequenceOf([digits, letters, digits]);
+    while (true) {
+      const thingWeWantState = valueParser.parserStateTransformerFn(nextState);
+      if (thingWeWantState.isError) {
+        break;
+      }
+      results.push(thingWeWantState.result);
+      nextState = thingWeWantState;
 
-//const parser = many(choice([digits, letters]));
-const betweenBrackets = between(str("("), str(")"));
-//const parser = betweenBrackets(letters);
-
-// "string:hello"
-// "number:42"
-// "diceroll:2d8"
-
-const stringParser = letters.map_p((result) => ({
-  type: "string",
-  value: result,
-}));
-
-const numberParser = digits.map_p((result) => ({
-  type: "number",
-  value: Number(result),
-}));
-
-const dicerollParser = sequenceOf([digits, str("d"), digits]).map_p(
-  ([n, _, s]) => ({
-    type: "diceroll",
-    value: [Number(n), Number(s)],
-  })
-);
-
-const parser = sequenceOf([letters, str(":")])
-  .map_p((results) => results[0])
-  .chain((type) => {
-    if (type === "string") {
-      return stringParser;
-    } else if (type === "number") {
-      return numberParser;
+      const separatorState =
+        separatorParser.parserStateTransformerFn(nextState);
+      if (separatorState.isError) {
+        break;
+      }
+      nextState = separatorState;
     }
-    return dicerollParser;
+
+    if (results.length === 0) {
+      return updateParserError(
+        parserState,
+        `sepBy1: Unable to capture any results at index ${parserState.index}`
+      );
+    }
+
+    return updateParserResult(nextState, results);
   });
 
-console.log(parser.run("diceroll:2d8"));
-console.log(parser.run("number:42"));
+const between = (leftParser, rightParser) => (contentParser) =>
+  sequenceOf([leftParser, contentParser, rightParser]).map(
+    (results) => results[1]
+  );
 
 const lazy = (parserThunk) =>
   new Parser((parserState) => {
@@ -312,42 +316,16 @@ const lazy = (parserThunk) =>
     return parser.parserStateTransformerFn(parserState);
   });
 
-const betweenSquaredBrackets = between(str("["), str("]"));
-const commaSeparated = sepBy(str(","));
-
-//const parser1 = betweenSquaredBrackets(commaSeperated(digits));
-const value = lazy(() => choice([digits, arrayParser]));
-
-const arrayParser = betweenSquaredBrackets(commaSeparated(value));
-console.log(arrayParser.run("[1,[2,[3],4],5]"));
-//console.log(parser1.run("[1,2,3,4,5]"));
-
-//console.log(parser.run("(hello)"));
-
-//const parser = letters;
-
-//console.log(parser.run("abc12345"));
-
-/*const parser = str("hello!")
-      .map((result) => ({
-        value: result.toUpperCase(),
-      }))
-      .errorMap((msg, index) => `Expected a greeting @ index ${index}`);
-    
-    console.log(parser.run("hello!"));
-    
-    /**
-     
-    {
-      targetString: 'hello',
-      index: 0,
-      result: null,
-      isError: true,
-      error: 'Tried to match "hello!", but got "hello'
-    }
-      
-     */
-
-//const parser = sequenceOf([str("hello!"), str("goodbye!")]); //  str get first argument
-
-//console.log(run(parser, "hello!goodbye!"));
+module.exports = {
+  str,
+  letters,
+  digits,
+  sequenceOf,
+  choice,
+  many,
+  many1,
+  sepBy,
+  sepBy1,
+  between,
+  lazy,
+};
