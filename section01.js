@@ -238,6 +238,30 @@ const many1 = (parser) =>
   });
 // match many or at least one
 
+const sepBy = (separatorParser) => (valueParser) =>
+  new Parser((parserState) => {
+    const results = [];
+    let nextState = parserState;
+
+    while (true) {
+      const thingWeWantState = valueParser.parserStateTransformerFn(nextState);
+      if (thingWeWantState.isError) {
+        break;
+      }
+      results.push(thingWeWantState.result);
+      nextState = thingWeWantState;
+
+      const separatorState =
+        separatorParser.parserStateTransformerFn(nextState);
+      if (separatorState.isError) {
+        break;
+      }
+      nextState = separatorState;
+    }
+
+    return updateParserResult(nextState, results);
+  });
+
 const between = (leftParser, rightParser) => (contentParser) =>
   sequenceOf([leftParser, contentParser, rightParser]).map_p((res) => res[1]);
 
@@ -281,6 +305,12 @@ const parser = sequenceOf([letters, str(":")])
 
 console.log(parser.run("diceroll:2d8"));
 console.log(parser.run("number:42"));
+
+const betweenSquaredBrackets = between(str("["), str("]"));
+const commaSeperated = sepBy(str(","));
+
+const parser1 = betweenSquaredBrackets(commaSeperated(digits));
+console.log(parser1.run("[1,2,3,4,5]"));
 
 //console.log(parser.run("(hello)"));
 
