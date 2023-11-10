@@ -42,6 +42,18 @@ class Parser {
     });
   }
 
+  chain(fn) {
+    return new Parser((parserState) => {
+      const nextState = this.parserStateTransformerFn(parserState);
+
+      if (nextState.isError) return nextState;
+
+      const nextParser = fn(nextState.result);
+
+      return nextParser.parserStateTransformerFn(nextState);
+    });
+  }
+
   errorMap(fn) {
     return new Parser((parserState) => {
       const nextState = this.parserStateTransformerFn(parserState);
@@ -233,9 +245,44 @@ const between = (leftParser, rightParser) => (contentParser) =>
 
 //const parser = many(choice([digits, letters]));
 const betweenBrackets = between(str("("), str(")"));
-const parser = betweenBrackets(letters);
+//const parser = betweenBrackets(letters);
 
-console.log(parser.run("(hello)"));
+// "string:hello"
+// "number:42"
+// "diceroll:2d8"
+
+const stringParser = letters.map_p((result) => ({
+  type: "string",
+  value: result,
+}));
+
+const numberParser = digits.map_p((result) => ({
+  type: "number",
+  value: Number(result),
+}));
+
+const dicerollParser = sequenceOf([digits, str("d"), digits]).map_p(
+  ([n, _, s]) => ({
+    type: "diceroll",
+    value: [Number(n), Number(s)],
+  })
+);
+
+const parser = sequenceOf([letters, str(":")])
+  .map_p((results) => results[0])
+  .chain((type) => {
+    if (type === "string") {
+      return stringParser;
+    } else if (type === "number") {
+      return numberParser;
+    }
+    return dicerollParser;
+  });
+
+console.log(parser.run("diceroll:2d8"));
+console.log(parser.run("number:42"));
+
+//console.log(parser.run("(hello)"));
 
 //const parser = letters;
 
